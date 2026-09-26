@@ -1,0 +1,4 @@
+:root { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; color: #6b6375; background: #fff; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; --accent: #aa3bff; --accent-bg: rgba(170, 59, 255, .1); --accent-border: rgba(170, 59, 255, .5); }
+body { margin: 0; }
+h1 { color: #08060d; font-size: 56px; font-weight: 500; margin: 0; }
+code { color: #08060d; background: #f4f3ec; padding: 4px 8px; border-radius: 4px; }
