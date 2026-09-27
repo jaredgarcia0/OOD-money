@@ -6,6 +6,8 @@ const paycheckRoutes = require('./routes/paychecks');
 const fixedExpenseRoutes = require('./routes/fixedExpenses');
 const categoryRoutes = require('./routes/categories');
 const settingsRoutes = require('./routes/settings');
+const budgetRoutes = require('./routes/budget');
+
 
 const app = express();
 
@@ -39,6 +41,8 @@ app.use('/api/fixed-expenses', fixedExpenseRoutes);
 app.use('/api/categories', categoryRoutes);
 // Settings is used to update the savings goal
 app.use('/api/settings', settingsRoutes);
+// budget 
+app.use('/api/budget', budgetRoutes);
 
 
 // Health check route - confirms the server is alive and reachable
