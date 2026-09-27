@@ -2,7 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const authRoutes = require('./routes/auth');
-
+const paycheckRoutes = require('./routes/paychecks');
+const fixedExpenseRoutes = require('./routes/fixedExpenses');
+const categoryRoutes = require('./routes/categories');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 
@@ -26,7 +29,16 @@ app.use(session({
   },
 }));
 
+//Authentication user
 app.use('/api/auth', authRoutes);
+// Add paychecks, edit, delete them
+app.use('/api/paychecks', paycheckRoutes);
+// Fixed expenses 
+app.use('/api/fixed-expenses', fixedExpenseRoutes);
+// Categories 100% and cant go over that 
+app.use('/api/categories', categoryRoutes);
+// Settings is used to update the savings goal
+app.use('/api/settings', settingsRoutes);
 
 
 // Health check route - confirms the server is alive and reachable
