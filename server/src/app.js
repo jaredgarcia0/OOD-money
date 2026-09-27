@@ -7,7 +7,7 @@ const fixedExpenseRoutes = require('./routes/fixedExpenses');
 const categoryRoutes = require('./routes/categories');
 const settingsRoutes = require('./routes/settings');
 const budgetRoutes = require('./routes/budget');
-
+const purchaseRoutes = require('./routes/purchases');
 
 const app = express();
 
@@ -43,7 +43,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/settings', settingsRoutes);
 // budget 
 app.use('/api/budget', budgetRoutes);
-
+app.use('/api/purchases', purchaseRoutes);
 
 // Health check route - confirms the server is alive and reachable
 app.get('/api/health', (req, res) => {
