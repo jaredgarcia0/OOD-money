@@ -1,0 +1,10 @@
+node_modules
+.env
+*.db
+client/dist
+.DS_Store
+cookies.txt
+user1.txt
+user2.txt
+demo.txt
+
