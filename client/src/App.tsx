@@ -8,6 +8,7 @@ import Paychecks from "./pages/Paychecks";
 import FixedExpenses from "./pages/FixedExpenses";
 import Purchases from "./pages/Purchases";
 import Settings from "./pages/Settings";
+import AppShell from "./components/AppShell";
 
 export default function App(): React.JSX.Element {
   return (
@@ -15,26 +16,13 @@ export default function App(): React.JSX.Element {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route
-        path="/dashboard"
-        element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
-      />
-      <Route
-        path="/paychecks"
-        element={<ProtectedRoute><Paychecks /></ProtectedRoute>}
-      />
-      <Route
-        path="/fixed-expenses"
-        element={<ProtectedRoute><FixedExpenses /></ProtectedRoute>}
-      />
-      <Route
-        path="/purchases"
-        element={<ProtectedRoute><Purchases /></ProtectedRoute>}
-      />
-      <Route
-        path="/settings"
-        element={<ProtectedRoute><Settings /></ProtectedRoute>}
-      />
+      <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/paychecks" element={<Paychecks />} />
+        <Route path="/fixed-expenses" element={<FixedExpenses />} />
+        <Route path="/purchases" element={<Purchases />} />
+        <Route path="/settings" element={<Settings />} />
+      </Route>
     </Routes>
   );
 }

@@ -200,8 +200,7 @@ export default function Login() {
           </div>
         </div>
         <div className="login-visual__quote">
-          <span className="login-visual__quote-mark" aria-hidden="true">“</span>
-          <p>Clarity turns good intentions into habits.</p>
+          {/* <span className="login-visual__quote-mark" aria-hidden="true">“</span> */}
         </div>
       </aside>
     </main>

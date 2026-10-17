@@ -58,11 +58,12 @@ export default function FixedExpenses() {
   }
 
   return (
-    <div>
-      <h1>Fixed Expenses</h1>
-      {error && <p className="error">{error}</p>}
-
-      <form onSubmit={handleSubmit}>
+    <div className="page-stack">
+      <div className="page-heading"><div><p className="page-kicker">Commitments</p><h1>Fixed expenses</h1><p className="page-subtitle">Plan for the bills that keep your life running.</p></div></div>
+      {error && <div className="notice notice--danger"><span>!</span>{error}</div>}
+      <form className="content-card form-card" onSubmit={handleSubmit}>
+        <div className="card-heading"><div><h2>Add a fixed expense</h2><p>We’ll include active expenses in your pay-period calculation.</p></div><span className="form-card__spark">✦</span></div>
+        <div className="form-grid form-grid--three">
         <input
           type="text"
           value={name}
@@ -87,19 +88,16 @@ export default function FixedExpenses() {
           placeholder="Due day (1-31)"
           required
         />
-        <button type="submit">Add Fixed Expense</button>
+        </div><button className="button button--primary" type="submit">Add expense <span>＋</span></button>
       </form>
-
-      <ul>
+      <section className="content-card list-card"><div className="card-heading"><div><h2>Your expenses</h2><p>Toggle an expense off when it no longer applies.</p></div><span className="count-pill">{expenses.length} total</span></div>
+      {expenses.length ? <ul className="record-list">
         {expenses.map((e) => (
-          <li key={e.id} style={{ opacity: e.active ? 1 : 0.5 }}>
-            {e.name} — ${(e.amount_cents / 100).toFixed(2)} (due day {e.due_day})
-            {!e.active && " [inactive]"}  
-            <button onClick={() => handleToggleActive(e)}>{e.active ? "Deactivate" : "Active"}</button>
-            <button onClick={() => handleDelete(e.id)}>Delete</button>
+          <li key={e.id} className={!e.active ? "is-muted" : ""}>
+            <span className="record-list__icon">⌁</span><span className="record-list__main"><strong>{e.name}</strong><small>Due on the {e.due_day} of each month</small></span><strong>${(e.amount_cents / 100).toFixed(2)}</strong><button className="text-button" onClick={() => handleToggleActive(e)}>{e.active ? "Deactivate" : "Activate"}</button><button className="text-button text-button--danger" onClick={() => handleDelete(e.id)}>Delete</button>
           </li>
         ))}
-      </ul>
+      </ul> : <p className="empty-state">No fixed expenses yet. Add rent, subscriptions, or other recurring bills above.</p>}</section>
     </div>
   );
 }

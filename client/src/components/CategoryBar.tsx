@@ -17,9 +17,9 @@ export default function CategoryBar({ category }: { category: Category }) {
   return (
     <div className="category-bar">
       <div className="category-bar-header">
-        <span>{name}</span>
+        <span className="category-bar__name"><span className="category-bar__dot" />{name}</span>
         <span className={overspent ? "overspent" : ""}>
-          ${dollars(remaining_cents)} left
+          <strong>${dollars(remaining_cents)}</strong> left
         </span>
       </div>
       <div className="category-bar-track">
@@ -27,7 +27,7 @@ export default function CategoryBar({ category }: { category: Category }) {
           className="category-bar-fill"
           style={{
             width: `${percentSpent}%`,
-            backgroundColor: overspent ? "#d33" : "#4a90d9",
+            backgroundColor: overspent ? "#d85b78" : "#1c5e3b",
           }}
         />
       </div>
