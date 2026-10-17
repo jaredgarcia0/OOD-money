@@ -1,10 +1,11 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import {
   getFixedExpenses,
   addFixedExpense,
   updateFixedExpense,
   deleteFixedExpense,
-} from "../api/fixedExpenses.js";
+} from "../api/fixedExpenses";
 
 export default function FixedExpenses() {
   const [expenses, setExpenses] = useState([]);
@@ -17,7 +18,7 @@ export default function FixedExpenses() {
     getFixedExpenses().then(setExpenses).catch((err) => setError(err.message));
   }, []);
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     try {
@@ -35,7 +36,7 @@ export default function FixedExpenses() {
     }
   }
 
-  async function handleToggleActive(expense) {
+  async function handleToggleActive(expense: any) {
     try {
       const updated = await updateFixedExpense(expense.id, {
         ...expense,
@@ -47,7 +48,7 @@ export default function FixedExpenses() {
     }
   }
 
-  async function handleDelete(id) {
+  async function handleDelete(id: number) {
     try {
       await deleteFixedExpense(id);
       setExpenses(expenses.filter((e) => e.id !== id));

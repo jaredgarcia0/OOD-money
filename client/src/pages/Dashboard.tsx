@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getBudget } from "../api/budget.js";
-import CategoryBar from "../components/CategoryBar.jsx";
+import { getBudget } from "../api/budget";
+import CategoryBar from "../components/CategoryBar";
 
 export default function Dashboard() {
   const [budget, setBudget] = useState(null);
@@ -15,7 +15,7 @@ export default function Dashboard() {
   if (error) return <p className="error">{error}</p>;
   if (!budget) return <p>Loading...</p>;
 
-  const dollars = (cents) => (cents / 100).toFixed(2);
+  const dollars = (cents: number) => (cents / 100).toFixed(2);
 
   return (
     <div>

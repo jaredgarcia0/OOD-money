@@ -2,7 +2,7 @@
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-async function request(path, options = {}) {
+async function request(path: string, options: RequestInit = {}): Promise<any> {
   const res = await fetch(`${API_URL}${path}`, {
     credentials: "include",
     headers: {
@@ -21,18 +21,18 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-export function get(path) {
+export function get(path: string) {
   return request(path);
 }
 
-export function post(path, data) {
+export function post(path: string, data?: unknown) {
   return request(path, { method: "POST", body: JSON.stringify(data) });
 }
 
-export function put(path, data) {
+export function put(path: string, data: unknown) {
   return request(path, { method: "PUT", body: JSON.stringify(data) });
 }
 
-export function del(path) {
+export function del(path: string) {
   return request(path, { method: "DELETE" });
 }

@@ -1,14 +1,15 @@
+import type React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import Paychecks from "./pages/Paychecks.jsx";
-import FixedExpenses from "./pages/FixedExpenses.jsx";
-import Purchases from "./pages/Purchases.jsx";
-import Settings from "./pages/Settings.jsx";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Paychecks from "./pages/Paychecks";
+import FixedExpenses from "./pages/FixedExpenses";
+import Purchases from "./pages/Purchases";
+import Settings from "./pages/Settings";
 
-export default function App() {
+export default function App(): React.JSX.Element {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

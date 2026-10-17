@@ -1,7 +1,8 @@
+import type React from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { register } from "../api/auth.js";
-import { useAuth } from "../context/AuthContext.jsx";
+import { register } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -10,7 +11,7 @@ export default function Register() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     try {
