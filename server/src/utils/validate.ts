@@ -8,4 +8,15 @@ function isValidPassword(password) {
   return typeof password === 'string' && password.length >= 8;
 }
 
-module.exports = { isValidEmail, isValidPassword };
+// Route params arrive as strings. Returns a positive integer id, or null if the param isn't one.
+function parseId(value) {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+// Prisma error code for a unique-constraint violation (e.g. duplicate email or category name).
+function isUniqueViolation(err) {
+  return err && err.code === 'P2002';
+}
+
+module.exports = { isValidEmail, isValidPassword, parseId, isUniqueViolation };

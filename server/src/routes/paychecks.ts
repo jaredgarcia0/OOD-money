@@ -1,72 +1,90 @@
 const express = require('express');
-const db = require('../db/connection');
+const { prisma } = require('../db/prisma');
 const requireAuth = require('../middleware/requireAuth');
+const { parseId } = require('../utils/validate');
+const { isValidDate, toDbDate, fromDbDate } = require('../utils/dates');
 
 const router = express.Router();
 router.use(requireAuth);
 
-// GET /api/paychecks - list all paychecks for the logged-in user, newest first
-router.get('/', (req, res) => {
-  const paychecks = db.prepare(`
-    SELECT id, pay_date, amount_cents, note
-    FROM paychecks
-    WHERE user_id = ?
-    ORDER BY pay_date DESC
-  `).all(req.session.userId);
+// The shape the client expects for a paycheck
+function toJson(p) {
+  return { id: p.id, pay_date: fromDbDate(p.pay_date), amount_cents: p.amount_cents, note: p.note };
+}
 
-  res.json(paychecks);
+function validate(body) {
+  const { pay_date, amount_cents } = body;
+  if (!isValidDate(pay_date)) {
+    return 'pay_date is required (YYYY-MM-DD)';
+  }
+  if (!Number.isInteger(amount_cents) || amount_cents <= 0) {
+    return 'amount_cents must be a positive whole number';
+  }
+  return null;
+}
+
+// GET /api/paychecks - list all paychecks for the household, newest first
+router.get('/', async (req, res) => {
+  const paychecks = await prisma.paycheck.findMany({
+    where: { household_id: req.session.householdId },
+    orderBy: { pay_date: 'desc' },
+  });
+
+  res.json(paychecks.map(toJson));
 });
 
 // POST /api/paychecks - add a new paycheck
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
+  const error = validate(req.body);
+  if (error) {
+    return res.status(400).json({ error });
+  }
   const { pay_date, amount_cents, note } = req.body;
 
-  if (!pay_date || typeof pay_date !== 'string') {
-    return res.status(400).json({ error: 'pay_date is required' });
-  }
-  if (!Number.isInteger(amount_cents) || amount_cents <= 0) {
-    return res.status(400).json({ error: 'amount_cents must be a positive whole number' });
-  }
+  const paycheck = await prisma.paycheck.create({
+    data: {
+      household_id: req.session.householdId,
+      pay_date: toDbDate(pay_date),
+      amount_cents,
+      note: note || null,
+    },
+  });
 
-  const result = db.prepare(`
-    INSERT INTO paychecks (user_id, pay_date, amount_cents, note)
-    VALUES (?, ?, ?, ?)
-  `).run(req.session.userId, pay_date, amount_cents, note || null);
-
-  res.status(201).json({ id: result.lastInsertRowid, pay_date, amount_cents, note: note || null });
+  res.status(201).json(toJson(paycheck));
 });
 
 // PUT /api/paychecks/:id - edit a paycheck
-router.put('/:id', (req, res) => {
-  const { pay_date, amount_cents, note } = req.body;
-
-  const existing = db.prepare('SELECT id FROM paychecks WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.session.userId);
+router.put('/:id', async (req, res) => {
+  const id = parseId(req.params.id);
+  const existing = id && await prisma.paycheck.findFirst({
+    where: { id, household_id: req.session.householdId },
+  });
   if (!existing) {
     return res.status(404).json({ error: 'Paycheck not found' });
   }
 
-  if (!pay_date || typeof pay_date !== 'string') {
-    return res.status(400).json({ error: 'pay_date is required' });
+  const error = validate(req.body);
+  if (error) {
+    return res.status(400).json({ error });
   }
-  if (!Number.isInteger(amount_cents) || amount_cents <= 0) {
-    return res.status(400).json({ error: 'amount_cents must be a positive whole number' });
-  }
+  const { pay_date, amount_cents, note } = req.body;
 
-  db.prepare(`
-    UPDATE paychecks SET pay_date = ?, amount_cents = ?, note = ?
-    WHERE id = ? AND user_id = ?
-  `).run(pay_date, amount_cents, note || null, req.params.id, req.session.userId);
+  const paycheck = await prisma.paycheck.update({
+    where: { id },
+    data: { pay_date: toDbDate(pay_date), amount_cents, note: note || null },
+  });
 
-  res.json({ id: Number(req.params.id), pay_date, amount_cents, note: note || null });
+  res.json(toJson(paycheck));
 });
 
 // DELETE /api/paychecks/:id
-router.delete('/:id', (req, res) => {
-  const result = db.prepare('DELETE FROM paychecks WHERE id = ? AND user_id = ?')
-    .run(req.params.id, req.session.userId);
+router.delete('/:id', async (req, res) => {
+  const id = parseId(req.params.id);
+  const result = id
+    ? await prisma.paycheck.deleteMany({ where: { id, household_id: req.session.householdId } })
+    : { count: 0 };
 
-  if (result.changes === 0) {
+  if (result.count === 0) {
     return res.status(404).json({ error: 'Paycheck not found' });
   }
 

@@ -1,80 +1,87 @@
 const express = require('express');
-const db = require('../db/connection');
+const { prisma } = require('../db/prisma');
 const requireAuth = require('../middleware/requireAuth');
+const { parseId } = require('../utils/validate');
 
 const router = express.Router();
 router.use(requireAuth);
 
-// GET /api/fixed-expenses - list all fixed expenses for the logged-in user
-router.get('/', (req, res) => {
-  const expenses = db.prepare(`
-    SELECT id, name, amount_cents, due_day, active
-    FROM fixed_expenses
-    WHERE user_id = ?
-    ORDER BY due_day ASC
-  `).all(req.session.userId);
+// The client expects `active` as 1 or 0
+function toJson(e) {
+  return { id: e.id, name: e.name, amount_cents: e.amount_cents, due_day: e.due_day, active: e.active ? 1 : 0 };
+}
 
-  res.json(expenses);
+function validate(body) {
+  const { name, amount_cents, due_day } = body;
+  if (!name || typeof name !== 'string') {
+    return 'name is required';
+  }
+  if (!Number.isInteger(amount_cents) || amount_cents < 0) {
+    return 'amount_cents must be a non-negative whole number';
+  }
+  if (!Number.isInteger(due_day) || due_day < 1 || due_day > 31) {
+    return 'due_day must be between 1 and 31';
+  }
+  return null;
+}
+
+// GET /api/fixed-expenses - list all fixed expenses for the household
+router.get('/', async (req, res) => {
+  const expenses = await prisma.fixedExpense.findMany({
+    where: { household_id: req.session.householdId },
+    orderBy: [{ due_day: 'asc' }, { id: 'asc' }],
+  });
+
+  res.json(expenses.map(toJson));
 });
 
 // POST /api/fixed-expenses - add a new fixed expense
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
+  const error = validate(req.body);
+  if (error) {
+    return res.status(400).json({ error });
+  }
   const { name, amount_cents, due_day } = req.body;
 
-  if (!name || typeof name !== 'string') {
-    return res.status(400).json({ error: 'name is required' });
-  }
-  if (!Number.isInteger(amount_cents) || amount_cents < 0) {
-    return res.status(400).json({ error: 'amount_cents must be a non-negative whole number' });
-  }
-  if (!Number.isInteger(due_day) || due_day < 1 || due_day > 31) {
-    return res.status(400).json({ error: 'due_day must be between 1 and 31' });
-  }
+  const expense = await prisma.fixedExpense.create({
+    data: { household_id: req.session.householdId, name, amount_cents, due_day, active: true },
+  });
 
-  const result = db.prepare(`
-    INSERT INTO fixed_expenses (user_id, name, amount_cents, due_day, active)
-    VALUES (?, ?, ?, ?, 1)
-  `).run(req.session.userId, name, amount_cents, due_day);
-
-  res.status(201).json({ id: result.lastInsertRowid, name, amount_cents, due_day, active: 1 });
+  res.status(201).json(toJson(expense));
 });
 
 // PUT /api/fixed-expenses/:id - edit or deactivate a fixed expense
-router.put('/:id', (req, res) => {
-  const { name, amount_cents, due_day, active } = req.body;
-
-  const existing = db.prepare('SELECT id FROM fixed_expenses WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.session.userId);
+router.put('/:id', async (req, res) => {
+  const id = parseId(req.params.id);
+  const existing = id && await prisma.fixedExpense.findFirst({
+    where: { id, household_id: req.session.householdId },
+  });
   if (!existing) {
     return res.status(404).json({ error: 'Fixed expense not found' });
   }
 
-  if (!name || typeof name !== 'string') {
-    return res.status(400).json({ error: 'name is required' });
+  const error = validate(req.body);
+  if (error) {
+    return res.status(400).json({ error });
   }
-  if (!Number.isInteger(amount_cents) || amount_cents < 0) {
-    return res.status(400).json({ error: 'amount_cents must be a non-negative whole number' });
-  }
-  if (!Number.isInteger(due_day) || due_day < 1 || due_day > 31) {
-    return res.status(400).json({ error: 'due_day must be between 1 and 31' });
-  }
+  const { name, amount_cents, due_day, active } = req.body;
 
-  const activeValue = active === 0 ? 0 : 1;
+  const expense = await prisma.fixedExpense.update({
+    where: { id },
+    data: { name, amount_cents, due_day, active: active !== 0 },
+  });
 
-  db.prepare(`
-    UPDATE fixed_expenses SET name = ?, amount_cents = ?, due_day = ?, active = ?
-    WHERE id = ? AND user_id = ?
-  `).run(name, amount_cents, due_day, activeValue, req.params.id, req.session.userId);
-
-  res.json({ id: Number(req.params.id), name, amount_cents, due_day, active: activeValue });
+  res.json(toJson(expense));
 });
 
 // DELETE /api/fixed-expenses/:id
-router.delete('/:id', (req, res) => {
-  const result = db.prepare('DELETE FROM fixed_expenses WHERE id = ? AND user_id = ?')
-    .run(req.params.id, req.session.userId);
+router.delete('/:id', async (req, res) => {
+  const id = parseId(req.params.id);
+  const result = id
+    ? await prisma.fixedExpense.deleteMany({ where: { id, household_id: req.session.householdId } })
+    : { count: 0 };
 
-  if (result.changes === 0) {
+  if (result.count === 0) {
     return res.status(404).json({ error: 'Fixed expense not found' });
   }
 

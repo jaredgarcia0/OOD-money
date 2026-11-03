@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
+const { pool } = require('./db/prisma');
 const authRoutes = require('./routes/auth');
 const paycheckRoutes = require('./routes/paychecks');
 const fixedExpenseRoutes = require('./routes/fixedExpenses');
@@ -21,6 +23,9 @@ app.use(cors({
 app.use(express.json());
 
 app.use(session({
+  // Sessions are saved in the Postgres `session` table, so logins survive server restarts.
+  // The table is created by the Prisma migration, not by connect-pg-simple.
+  store: new PgSession({ pool, tableName: 'session' }),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false, // don't create a session until something is actually stored in it (like a logged-in user ID). Saves unnecessary empty sessions.
@@ -48,6 +53,12 @@ app.use('/api/purchases', purchaseRoutes);
 // Health check route - confirms the server is alive and reachable
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Any unexpected error in a route ends up here. Send JSON so the client can show a message.
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
 module.exports = app;

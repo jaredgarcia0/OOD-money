@@ -1,28 +1,34 @@
 const express = require('express');
-const db = require('../db/connection');
+const { prisma } = require('../db/prisma');
 const requireAuth = require('../middleware/requireAuth');
 
 const router = express.Router();
 router.use(requireAuth);
 
-// GET /api/settings - read the current savings goal
-router.get('/', (req, res) => {
-  const user = db.prepare('SELECT savings_goal_cents FROM users WHERE id = ?')
-    .get(req.session.userId);
+// The savings goal is shared by everyone in the household.
 
-  res.json({ savings_goal_cents: user.savings_goal_cents });
+// GET /api/settings - read the current savings goal
+router.get('/', async (req, res) => {
+  const household = await prisma.household.findUnique({
+    where: { id: req.session.householdId },
+    select: { savings_goal_cents: true },
+  });
+
+  res.json({ savings_goal_cents: household.savings_goal_cents });
 });
 
 // PUT /api/settings - update the savings goal
-router.put('/', (req, res) => {
+router.put('/', async (req, res) => {
   const { savings_goal_cents } = req.body;
 
   if (!Number.isInteger(savings_goal_cents) || savings_goal_cents < 0) {
     return res.status(400).json({ error: 'savings_goal_cents must be a non-negative whole number' });
   }
 
-  db.prepare('UPDATE users SET savings_goal_cents = ? WHERE id = ?')
-    .run(savings_goal_cents, req.session.userId);
+  await prisma.household.update({
+    where: { id: req.session.householdId },
+    data: { savings_goal_cents },
+  });
 
   res.json({ savings_goal_cents });
 });
