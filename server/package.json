@@ -3,31 +3,41 @@
   "version": "1.0.0",
   "main": "server.ts",
   "scripts": {
-      "start": "tsx server.ts",
-      "dev": "nodemon --exec tsx server.ts",
-      "test": "tsx --test tests/*.test.ts",
-      "typecheck": "tsc --noEmit",
-      "seed": "tsx src/db/seed.ts"
+    "start": "tsx server.ts",
+    "dev": "nodemon --exec tsx server.ts",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "seed": "tsx src/db/seed.ts",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "bcryptjs": "^3.0.3",
-    "better-sqlite3": "^12.11.1",
+    "connect-pg-simple": "10.0.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.3",
     "express": "^5.2.1",
-    "express-session": "^1.19.0"
+    "express-session": "^1.19.0",
+    "pg": "8.23.1"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
+    "@types/connect-pg-simple": "7.0.3",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.3",
     "@types/express-session": "^1.18.2",
     "@types/node": "^22.15.21",
+    "@types/pg": "8.23.1",
     "nodemon": "^3.1.14",
+    "prisma": "7.10.1",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

@@ -1,79 +1,89 @@
 const express = require('express');
-const db = require('../db/connection');
+const { prisma } = require('../db/prisma');
 const requireAuth = require('../middleware/requireAuth');
+const { parseId } = require('../utils/validate');
+const { toDbDate, fromDbDate } = require('../utils/dates');
 const { getPeriod, expensesDueInPeriod, calculateBudget } = require('../services/budgetCalculator');
 
 const router = express.Router();
 router.use(requireAuth);
 
 // GET /api/budget?paycheckId= - defaults to the latest paycheck if not given
-router.get('/', (req, res) => {
-  const userId = req.session.userId;
+router.get('/', async (req, res) => {
+  const householdId = req.session.householdId;
 
   // 1. Find the paycheck this budget is for
   let paycheck;
   if (req.query.paycheckId) {
-    paycheck = db.prepare('SELECT * FROM paychecks WHERE id = ? AND user_id = ?')
-      .get(req.query.paycheckId, userId);
+    const paycheckId = parseId(req.query.paycheckId);
+    paycheck = paycheckId && await prisma.paycheck.findFirst({
+      where: { id: paycheckId, household_id: householdId },
+    });
     if (!paycheck) {
       return res.status(404).json({ error: 'Paycheck not found' });
     }
   } else {
-    paycheck = db.prepare(`
-      SELECT * FROM paychecks WHERE user_id = ? ORDER BY pay_date DESC LIMIT 1
-    `).get(userId);
+    paycheck = await prisma.paycheck.findFirst({
+      where: { household_id: householdId },
+      orderBy: [{ pay_date: 'desc' }, { id: 'desc' }],
+    });
   }
 
   if (!paycheck) {
     return res.status(200).json({ has_paycheck: false });
   }
 
+  const payDate = fromDbDate(paycheck.pay_date);
+
   // 2. Find the next paycheck after this one, to know when the period ends
-  const nextPaycheck = db.prepare(`
-    SELECT pay_date FROM paychecks
-    WHERE user_id = ? AND pay_date > ?
-    ORDER BY pay_date ASC LIMIT 1
-  `).get(userId, paycheck.pay_date);
+  const nextPaycheck = await prisma.paycheck.findFirst({
+    where: { household_id: householdId, pay_date: { gt: paycheck.pay_date } },
+    orderBy: { pay_date: 'asc' },
+    select: { pay_date: true },
+  });
 
-  const period = getPeriod(paycheck.pay_date, nextPaycheck ? nextPaycheck.pay_date : null);
+  const period = getPeriod(payDate, nextPaycheck ? fromDbDate(nextPaycheck.pay_date) : null);
 
-  // 3. Get active fixed expenses, then figure out which are due in this period
-  const allExpenses = db.prepare(`
-    SELECT * FROM fixed_expenses WHERE user_id = ? AND active = 1
-  `).all(userId);
-  const dueExpenses = expensesDueInPeriod(allExpenses, period);
+  // 3-6. Load everything else the calculation needs, in parallel
+  const [allExpenses, household, categories, purchaseRows] = await Promise.all([
+    // Active fixed expenses (the calculator picks the ones due in this period)
+    prisma.fixedExpense.findMany({ where: { household_id: householdId, active: true } }),
+    // The household's savings goal
+    prisma.household.findUnique({ where: { id: householdId }, select: { savings_goal_cents: true } }),
+    prisma.category.findMany({ where: { household_id: householdId } }),
+    // Purchases within this period, totaled by category
+    prisma.purchase.groupBy({
+      by: ['category_id'],
+      where: {
+        household_id: householdId,
+        purchase_date: { gte: toDbDate(period.start), lte: toDbDate(period.end) },
+      },
+      _sum: { amount_cents: true },
+    }),
+  ]);
 
-  // 4. Get the user's savings goal
-  const user = db.prepare('SELECT savings_goal_cents FROM users WHERE id = ?').get(userId);
-
-  // 5. Get categories
-  const categories = db.prepare('SELECT * FROM categories WHERE user_id = ?').all(userId);
-
-  // 6. Get purchases within this period, grouped by category
-  const purchaseRows = db.prepare(`
-    SELECT category_id, SUM(amount_cents) AS total
-    FROM purchases
-    WHERE user_id = ? AND purchase_date BETWEEN ? AND ?
-    GROUP BY category_id
-  `).all(userId, period.start, period.end);
+  const dueExpenses = expensesDueInPeriod(
+    allExpenses.map((e) => ({ ...e, active: e.active ? 1 : 0 })),
+    period,
+  );
 
   const purchasesByCategory = {};
   for (const row of purchaseRows) {
-    purchasesByCategory[row.category_id] = row.total;
+    purchasesByCategory[row.category_id] = row._sum.amount_cents || 0;
   }
 
   // 7. Run the actual calculation
   const result = calculateBudget({
     paycheckAmountCents: paycheck.amount_cents,
     fixedExpenses: dueExpenses,
-    savingsGoalCents: user.savings_goal_cents,
+    savingsGoalCents: household.savings_goal_cents,
     categories,
     purchasesByCategory,
   });
 
   res.json({
     has_paycheck: true,
-    paycheck: { id: paycheck.id, pay_date: paycheck.pay_date, amount_cents: paycheck.amount_cents },
+    paycheck: { id: paycheck.id, pay_date: payDate, amount_cents: paycheck.amount_cents },
     period,
     fixed_expenses_due: dueExpenses,
     ...result,

@@ -1,0 +1,124 @@
+// Prisma schema for OOD-Money (PostgreSQL).
+// Change this file, then run `npm run db:migrate -- --name <what-changed>` to create a migration.
+//
+// Conventions:
+// - Field names are snake_case so API responses keep the same shape the client already uses.
+// - Money is always an integer number of cents (*_cents).
+// - Calendar dates (pay_date, purchase_date) use the Postgres DATE type; the API sends them as YYYY-MM-DD.
+// - Budget data belongs to a household, not a single user, so family members can share it.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            Int               @id @default(autoincrement())
+  email         String            @unique
+  password_hash String
+  created_at    DateTime          @default(now()) @db.Timestamptz(3)
+  memberships   HouseholdMember[]
+
+  @@map("users")
+}
+
+model Household {
+  id                 Int               @id @default(autoincrement())
+  name               String
+  savings_goal_cents Int               @default(0)
+  created_at         DateTime          @default(now()) @db.Timestamptz(3)
+  members            HouseholdMember[]
+  paychecks          Paycheck[]
+  fixed_expenses     FixedExpense[]
+  categories         Category[]
+  purchases          Purchase[]
+
+  @@map("households")
+}
+
+enum HouseholdRole {
+  owner
+  member
+}
+
+model HouseholdMember {
+  household_id Int
+  user_id      Int
+  role         HouseholdRole @default(member)
+  created_at   DateTime      @default(now()) @db.Timestamptz(3)
+  household    Household     @relation(fields: [household_id], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([household_id, user_id])
+  @@index([user_id])
+  @@map("household_members")
+}
+
+model Paycheck {
+  id           Int       @id @default(autoincrement())
+  household_id Int
+  pay_date     DateTime  @db.Date
+  amount_cents Int
+  note         String?
+  household    Household @relation(fields: [household_id], references: [id], onDelete: Cascade)
+
+  @@index([household_id, pay_date])
+  @@map("paychecks")
+}
+
+model FixedExpense {
+  id           Int       @id @default(autoincrement())
+  household_id Int
+  name         String
+  amount_cents Int
+  due_day      Int
+  active       Boolean   @default(true)
+  household    Household @relation(fields: [household_id], references: [id], onDelete: Cascade)
+
+  @@index([household_id])
+  @@map("fixed_expenses")
+}
+
+model Category {
+  id           Int        @id @default(autoincrement())
+  household_id Int
+  name         String
+  percent      Int
+  household    Household  @relation(fields: [household_id], references: [id], onDelete: Cascade)
+  purchases    Purchase[]
+
+  @@unique([household_id, name])
+  @@map("categories")
+}
+
+model Purchase {
+  id            Int       @id @default(autoincrement())
+  household_id  Int
+  category_id   Int
+  purchase_date DateTime  @db.Date
+  amount_cents  Int
+  description   String?
+  household     Household @relation(fields: [household_id], references: [id], onDelete: Cascade)
+  // NoAction: a category with purchases can't be deleted on its own (the route also checks this),
+  // but deleting a whole household still removes its purchases and categories together.
+  category      Category  @relation(fields: [category_id], references: [id], onDelete: NoAction)
+
+  @@index([household_id, purchase_date])
+  @@index([category_id])
+  @@map("purchases")
+}
+
+// Login sessions, stored by connect-pg-simple. The table layout must match what that library expects.
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+}
