@@ -42,7 +42,3 @@ Run the API and client at the same time, in separate terminals.
 - Category percents per user must total ≤ 100, which `routes/categories.ts` enforces. Registering a user seeds default categories (Groceries 50, Gas 20, Fun 20, Buffer 10).
 
 Put new budget math in `budgetCalculator.ts` and test it in `server/tests/`. Keep DB access in the routes.
-
-## Gotchas
-
-- `client/package.json` lists `@rolldown/binding-darwin-arm64` as a devDependency. On non-macOS-ARM machines, `npm install` fails with `EBADPLATFORM` until that entry is removed or moved to optional dependencies.
