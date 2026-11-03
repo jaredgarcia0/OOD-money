@@ -16,12 +16,14 @@ Server (`cd server`, needs `.env` copied from `.env.example`):
 - `npm run typecheck`: `tsc --noEmit`
 - `npm run seed`: **wipes all tables** and loads a demo user (`demo@example.com` / `password123`)
 
-Client (`cd client`, needs `.env` with `VITE_API_URL`):
+Client (`cd client`, needs `.env` copied from `.env.example`, which sets `VITE_API_URL`):
 - `npm run dev` (Vite, usually http://localhost:5173), `npm run build`, `npm run typecheck`, `npm run lint`
 
 Run the API and client at the same time, in separate terminals.
 
 ## Architecture
+
+**Server entry:** `server.ts` loads dotenv and calls `listen`. `src/app.ts` builds and exports the Express app (CORS, JSON, session, routers mounted under `/api/*`, plus `GET /api/health`), so it can be imported without starting a server.
 
 **Request flow:** pages in `client/src/pages/` call thin per-resource modules in `client/src/api/`. All requests go through `client/src/api/client.ts` (`get/post/put/del`). It sends `credentials: "include"` so the session cookie travels cross-origin, and it throws `Error(body.error)` on non-2xx responses. Pages show `err.message` directly, so server error strings are user-facing.
 
