@@ -36,8 +36,10 @@
     "@types/express-session": "^1.18.2",
     "@types/node": "^22.15.21",
     "@types/pg": "8.23.1",
+    "@types/supertest": "^7.2.1",
     "nodemon": "^3.1.14",
     "prisma": "7.10.1",
+    "supertest": "^7.3.2",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }
